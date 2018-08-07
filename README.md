@@ -1,7 +1,7 @@
 # ARNoteTaking
 AR note taking using Unity and OpenCV 
 
-##SETUP
+## SETUP
 
 1. You need OpenCVForUnity Library first.
 2. Clone this folder into Assets folder (if not working, try clone to Assets/OpenCVForUnity/Examples/Advanced)
@@ -13,6 +13,6 @@ Here is the tutorial that I followed to push the code into github
 https://www.youtube.com/watch?v=qpXxcvS-g3g
 
 
-##CODE
+## CODE
 
 All the code runs in Update() method and mainMat is the mat of video getting from camera. 
