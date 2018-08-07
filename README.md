@@ -10,3 +10,7 @@ AR note taking using Unity and OpenCV
 
 Here is the tutorial that I followed to push the code into github
 https://www.youtube.com/watch?v=qpXxcvS-g3g
+
+
+> CODE
+All the code runs in Update() method and mainMat is the mat of video getting from camera. 
