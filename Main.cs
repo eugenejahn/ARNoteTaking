@@ -117,7 +117,7 @@ namespace OpenCVForUnityExample
         // Use this for initialization
         void Start()
         {
-           
+
 
             fpsMonitor = GetComponent<FpsMonitor>();
 
@@ -233,11 +233,11 @@ namespace OpenCVForUnityExample
 
         //  opticla variable !!!
         // the varaible i am using 
-        bool initOpticalFlow = true ;
+        bool initOpticalFlow = true;
         MatOfPoint2f prevFeatures = new MatOfPoint2f();
-        MatOfPoint2f nextFeatures = new MatOfPoint2f();
-        Mat mGray = new Mat();
-        Mat oldFrame = new Mat();
+        MatOfPoint2f currentFeatures = new MatOfPoint2f();
+        Mat currentGrayMat = new Mat();
+        Mat prevGrayMat = new Mat();
 
 
         List<Scalar> color = new List<Scalar>();
@@ -262,7 +262,7 @@ namespace OpenCVForUnityExample
         MatOfFloat err = new MatOfFloat();
 
 
-        MatOfPoint rectMatOfPoint = new MatOfPoint();
+        MatOfPoint paperCornerMatOfPoint = new MatOfPoint();
         bool selectTarget = false;
 
         public Texture2D document;
@@ -275,80 +275,67 @@ namespace OpenCVForUnityExample
 
                 Mat mainMat = webCamTextureToMatHelper.GetMat();
 
-                if (!selectTarget)
+
+                if (!selectTarget) //find paper by contours 
                 {
                     grayMat = new Mat();
 
                     // convert texture to matrix
-                    //Utils.texture2DToMat(baseTexture, mainMat);
                     mainMat.copyTo(grayMat);
 
-                    // find the biggest rectangle and isplay on right 
-                    mainMat = findRectangle(mainMat);
+                    mainMat = findPaper(mainMat);
 
-
-                    //Imgproc.cvtColor(grayMat, mainMat, Imgproc.COLOR_GRAY2RGBA);
+                    // display matrix on the screen 
                     Utils.fastMatToTexture2D(mainMat, texture);
 
-                }else{
+                }
+                else
+                { // using optical flow 
 
 
-                    // set the mgray mat 
-                    mGray = new Mat(mainMat.rows(), mainMat.cols(), Imgproc.COLOR_RGB2GRAY);
-                    Imgproc.cvtColor(mainMat, mGray, Imgproc.COLOR_RGBA2GRAY);
+                    // set the currentGrayMat mat 
+                    currentGrayMat = new Mat(mainMat.rows(), mainMat.cols(), Imgproc.COLOR_RGB2GRAY);
+                    Imgproc.cvtColor(mainMat, currentGrayMat, Imgproc.COLOR_RGBA2GRAY);
 
-                    if (initOpticalFlow == true)
+
+                    if (initOpticalFlow == true) // doing the init setting for optical flow
                     {
 
-                        // Optical flowwwwww
 
-                        // the gap of those init balls 
-                        // lowest are more accurate  and rowStep is y colStep is X  
-                        //Mat targetMat = Converters.vector_Point_to_Mat(rectMatOfPoint.toList(), CvType.CV_32F);
-                        //Debug.Log(targetMat.rows() + " " + targetMat.cols());
-
-                        //int rowStep = 20, colStep = 40;
-                        //int nRows = targetMat.rows() / rowStep, nCols = (targetMat.cols() / colStep);
-
-                        //// put points data to  nextFeatures(matofPoint)
-                        //Point[] points = new Point[nRows * nCols];
-                        //for (int i = 0; i < nRows; i++)
-                        //{
-                        //    for (int j = 0; j < nCols; j++)
-                        //    {
-                        //        points[i * nCols + (j)] = new Point(rectMatOfPoint.toList()[0].x + j * colStep, rectMatOfPoint.toList()[0].y + i * rowStep);
-                        //    }
-                        //}
-
+                        // create 40 points 
                         Point[] points = new Point[40];
-                        for (int i = 0; i < 4; i ++ ){
-                            points[i * 10] = new Point(rectMatOfPoint.toList()[i].x, rectMatOfPoint.toList()[i].y );
-                            points[i * 10 + 1] = new Point(rectMatOfPoint.toList()[i].x+1, rectMatOfPoint.toList()[i].y);
-                            points[i * 10 + 2] = new Point(rectMatOfPoint.toList()[i].x, rectMatOfPoint.toList()[i].y+1);
-                            points[i * 10 + 3] = new Point(rectMatOfPoint.toList()[i].x +1, rectMatOfPoint.toList()[i].y+1);
-                            points[i * 10 + 4] = new Point(rectMatOfPoint.toList()[i].x , rectMatOfPoint.toList()[i].y-1);
-                            points[i * 10 + 5] = new Point(rectMatOfPoint.toList()[i].x - 1, rectMatOfPoint.toList()[i].y);
-                            points[i * 10 + 6] = new Point(rectMatOfPoint.toList()[i].x - 2, rectMatOfPoint.toList()[i].y -1);
-                            points[i * 10 + 7] = new Point(rectMatOfPoint.toList()[i].x , rectMatOfPoint.toList()[i].y-2);
-                            points[i * 10 + 8] = new Point(rectMatOfPoint.toList()[i].x - 2, rectMatOfPoint.toList()[i].y-2);
-                            points[i * 10 + 9] = new Point(rectMatOfPoint.toList()[i].x  + 2 , rectMatOfPoint.toList()[i].y+ 2 );
+                        // set those points near the corner
+                        // paperCornerMatOfPoint  is the corner of the paper
+                        for (int i = 0; i < 4; i++)
+                        {
+                            points[i * 10] = new Point(paperCornerMatOfPoint.toList()[i].x, paperCornerMatOfPoint.toList()[i].y);
+                            points[i * 10 + 1] = new Point(paperCornerMatOfPoint.toList()[i].x + 1, paperCornerMatOfPoint.toList()[i].y);
+                            points[i * 10 + 2] = new Point(paperCornerMatOfPoint.toList()[i].x, paperCornerMatOfPoint.toList()[i].y + 1);
+                            points[i * 10 + 3] = new Point(paperCornerMatOfPoint.toList()[i].x + 1, paperCornerMatOfPoint.toList()[i].y + 1);
+                            points[i * 10 + 4] = new Point(paperCornerMatOfPoint.toList()[i].x, paperCornerMatOfPoint.toList()[i].y - 1);
+                            points[i * 10 + 5] = new Point(paperCornerMatOfPoint.toList()[i].x - 1, paperCornerMatOfPoint.toList()[i].y);
+                            points[i * 10 + 6] = new Point(paperCornerMatOfPoint.toList()[i].x - 2, paperCornerMatOfPoint.toList()[i].y - 1);
+                            points[i * 10 + 7] = new Point(paperCornerMatOfPoint.toList()[i].x, paperCornerMatOfPoint.toList()[i].y - 2);
+                            points[i * 10 + 8] = new Point(paperCornerMatOfPoint.toList()[i].x - 2, paperCornerMatOfPoint.toList()[i].y - 2);
+                            points[i * 10 + 9] = new Point(paperCornerMatOfPoint.toList()[i].x + 2, paperCornerMatOfPoint.toList()[i].y + 2);
                         }
 
-                        // find corners (Harris Corner Detection )
-                        Imgproc.goodFeaturesToTrack(mGray, corners, 40, qualityLevel, minDistance, none, blockSize, false, 0.04);
+                        // make the points closer to the corners (Harris Corner Detection )
+                        Imgproc.goodFeaturesToTrack(currentGrayMat, corners, 40, qualityLevel, minDistance, none, blockSize, false, 0.04);
 
                         corners.fromArray(points);
 
                         prevFeatures.fromList(corners.toList());
-                        nextFeatures.fromList(corners.toList());
-                        oldFrame = mGray.clone();
+                        currentFeatures.fromList(corners.toList());
+                        prevGrayMat = currentGrayMat.clone();
 
-                        // never repeat again 
+                        // won't go back t again 
                         initOpticalFlow = false;
 
 
                         // not that useful lol 
                         // create random color 
+                        // not working now
                         for (int i = 0; i < maxCorners; i++)
                         {
                             color.Add(new Scalar((int)(Random.value * 255), (int)(Random.value * 255),
@@ -362,19 +349,19 @@ namespace OpenCVForUnityExample
                     {
 
                         // Don't want ball move
-                        //nextFeatures.fromArray(prevFeatures.toArray());
+                        //currentFeatures.fromArray(prevFeatures.toArray());
 
 
                         // want ball move
-                        prevFeatures.fromArray(nextFeatures.toArray());
+                        prevFeatures.fromArray(currentFeatures.toArray());
 
-                        // optical flow it will changes the valu of nextFeatures
-                        Video.calcOpticalFlowPyrLK(oldFrame, mGray, prevFeatures, nextFeatures, st, err);
+                        // optical flow it will changes the valu of currentFeatures
+                        Video.calcOpticalFlowPyrLK(prevGrayMat, currentGrayMat, prevFeatures, currentFeatures, st, err);
                         //Debug.Log(st.rows());
 
                         // change to points list 
                         List<Point> prevList = prevFeatures.toList(),
-                                    nextList = nextFeatures.toList();
+                                    nextList = currentFeatures.toList();
 
 
                         // draw the data 
@@ -386,46 +373,56 @@ namespace OpenCVForUnityExample
                             Imgproc.line(mainMat, prevList[i], nextList[i], color[20]);
                         }
 
-                        Debug.Log("Length" + nextList.Count);
 
-                        List<List<Point>> mostDots = new List<List<Point>>(40);
-                        mostDots.Add(new List<Point>(10));
+                        List<List<Point>> cornersFeatures = new List<List<Point>>(40);
+                        cornersFeatures.Add(new List<Point>(10));
 
+                        // put the corners features data into the list
                         int tmp = 0;
                         bool last = true;
-                        for( int i = 0; i < nextList.Count-1; i++){
-                            if(Mathf.Abs( (float)(nextList[i].x - nextList[i+1].x) ) < 10 && Mathf.Abs((float)(nextList[i].y - nextList[i + 1].y)) < 10){
+                        for (int i = 0; i < nextList.Count - 1; i++)
+                        {
+                            if (Mathf.Abs((float)(nextList[i].x - nextList[i + 1].x)) < 10 && Mathf.Abs((float)(nextList[i].y - nextList[i + 1].y)) < 10)
+                            {
                                 if (last == true)
                                 {
-                                    mostDots[tmp].Add(nextList[i]);
+                                    cornersFeatures[tmp].Add(nextList[i]);
                                 }
-                                else{
-                                    mostDots.Add(new List<Point>(10));
+                                else
+                                {
+                                    cornersFeatures.Add(new List<Point>(10));
                                     tmp = tmp + 1;
-                                    mostDots[tmp].Add(nextList[i]);
+                                    cornersFeatures[tmp].Add(nextList[i]);
                                 }
                                 last = true;
-                            }else{
+                            }
+                            else
+                            {
                                 last = false;
                             }
                         }
 
-                        int manyPoints = 0;
-                        for (int i = 0; i < mostDots.Count; i ++){
-                            Debug.Log(mostDots[i].Count);
-                            if(mostDots[i].Count < 5){
-                                mostDots.RemoveAt(i);
-                            }else{
-                                manyPoints++;
+                        // count corners 
+                        int manyCornersFeatures = 0;
+                        for (int i = 0; i < cornersFeatures.Count; i++)
+                        {
+                            Debug.Log(cornersFeatures[i].Count);
+                            if (cornersFeatures[i].Count < 5)
+                            {
+                                cornersFeatures.RemoveAt(i);
+                            }
+                            else
+                            {
+                                manyCornersFeatures++;
                             }
                         }
 
-                        //Debug.Log("Length" + manyPoints);
+                        //Debug.Log("Length" + manyCornersFeatures);
 
-                        // ignore this code still working on it 
-                        if(manyPoints == 4){
-                            
-                            Debug.Log("find four points lololol");
+                        // if corners equal 4 then diplay virtual docunment into the frame
+                        // doing the perspective transform
+                        if (manyCornersFeatures == 4)
+                        {
 
                             Mat documentMat = new Mat(document.height, document.width, CvType.CV_8UC3);
                             Utils.texture2DToMat(document, documentMat);
@@ -440,15 +437,15 @@ namespace OpenCVForUnityExample
                             Mat srcPointsMat = Converters.vector_Point_to_Mat(srcPoints, CvType.CV_32F);
 
 
-                            List<Point> dstPoints = new List<Point>() { mostDots[0][0],mostDots[1][0],mostDots[2][0], mostDots[3][0]};
+                            List<Point> dstPoints = new List<Point>() { cornersFeatures[0][0], cornersFeatures[1][0], cornersFeatures[2][0], cornersFeatures[3][0] };
                             Mat dstPointsMat = Converters.vector_Point_to_Mat(dstPoints, CvType.CV_32F);
 
 
                             //Make perspective transform
                             Mat m = Imgproc.getPerspectiveTransform(srcPointsMat, dstPointsMat);
-                            Mat warpedMat = new Mat( new Size(),documentMat.type());
-                            Debug.Log((mostDots[1][0].x - mostDots[0][0].x) + " " +  (mostDots[2][0].y - mostDots[1][0].y));
-                            Imgproc.warpPerspective(documentMat, warpedMat, m,mainMat.size(), Imgproc.INTER_LINEAR);
+                            Mat warpedMat = new Mat(new Size(), documentMat.type());
+                            Debug.Log((cornersFeatures[1][0].x - cornersFeatures[0][0].x) + " " + (cornersFeatures[2][0].y - cornersFeatures[1][0].y));
+                            Imgproc.warpPerspective(documentMat, warpedMat, m, mainMat.size(), Imgproc.INTER_LINEAR);
                             //warpedMat.convertTo(warpedMat, CvType.CV_32F);
 
 
@@ -462,24 +459,21 @@ namespace OpenCVForUnityExample
                             Imgproc.cvtColor(mainMat, dst, Imgproc.COLOR_RGBA2RGB);
 
                             //dst.setTo(new Scalar(0, 255, 0));
-                            //mGray.copyTo(dst);
+                            //currentGrayMat.copyTo(dst);
                             //dst.convertTo(dst, CvType.CV_8UC3);
 
 
-                            //Imgproc.cvtColor(mGray, frame, Imgproc.COLOR_GRAY2RGBA);
+                            //Imgproc.cvtColor(currentGrayMat, frame, Imgproc.COLOR_GRAY2RGBA);
 
                             Mat img1 = new Mat();
                             Mat mask = new Mat(mainMat.size(), CvType.CV_8UC1, new Scalar(0));
                             Imgproc.cvtColor(warpedMat, img1, Imgproc.COLOR_RGB2GRAY);
                             Imgproc.Canny(img1, img1, 100, 200);
-                            List<MatOfPoint> doc_contours =  new List<MatOfPoint>();;
+                            List<MatOfPoint> doc_contours = new List<MatOfPoint>(); ;
                             Imgproc.findContours(img1, doc_contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
-                            Imgproc.drawContours(mask, doc_contours , -1, new Scalar(255), Core.FILLED);
-                            Debug.Log("dst" + dst.type());
-                            Debug.Log("mask" + mask.type());
-                            Debug.Log("warpedMat" + warpedMat.type());
-                            //Imgproc.cvtColor(warpedMat, warpedMat, Imgproc.COLOR_BGR2RGB);
-                            warpedMat.copyTo(dst,mask);
+                            Imgproc.drawContours(mask, doc_contours, -1, new Scalar(255), Core.FILLED);
+                           
+                            warpedMat.copyTo(dst, mask);
 
                             dst.convertTo(dst, CvType.CV_8UC3);
 
@@ -499,25 +493,24 @@ namespace OpenCVForUnityExample
 
 
                         // current frame to old frame 
-                        oldFrame = mGray.clone();
+                        prevGrayMat = currentGrayMat.clone();
 
 
 
-                       
-                        //Imgproc.cvtColor(mGray, frame, Imgproc.COLOR_GRAY2RGBA);
 
+                        //Imgproc.cvtColor(currentGrayMat, frame, Imgproc.COLOR_GRAY2RGBA);
+
+                        // display matrix on the screen
                         Utils.fastMatToTexture2D(mainMat, texture);
-
-
-
                     }
-                    
+
                 }
             }
         }
 
-        public void SelectTargetButton(){
-            if (selectTarget) initOpticalFlow = true; 
+        public void SelectTargetButton()
+        {
+            if (selectTarget) initOpticalFlow = true;
             selectTarget = !selectTarget;
 
         }
@@ -584,7 +577,7 @@ namespace OpenCVForUnityExample
         }
 
 
-        private  Mat findRectangle(Mat mainMat)
+        private Mat findPaper(Mat mainMat)
         {
 
 
@@ -686,7 +679,7 @@ namespace OpenCVForUnityExample
                     }
 
 
-                    if ( min_length > 100)//  && rate >= 0.6  maxCosine < 135f &&
+                    if (min_length > 100)//  && rate >= 0.6  maxCosine < 135f &&
                     {
                         tmpTargets.Add(approxPt);
                         //Debug.Log("Length -----------" + min_length);
@@ -732,17 +725,17 @@ namespace OpenCVForUnityExample
                 int largestPaper = findLargestSquare(tmpTargets);
                 //Debug.Log(largestPaper);
                 // using the largest one 
-                rectMatOfPoint = tmpTargets[largestPaper];
+                paperCornerMatOfPoint = tmpTargets[largestPaper];
 
 
                 // draw boundary 
-                Imgproc.line(mainMat, rectMatOfPoint.toList()[0], rectMatOfPoint.toList()[1], new Scalar(0, 255, 0), 3);
-                Imgproc.line(mainMat, rectMatOfPoint.toList()[0], rectMatOfPoint.toList()[3], new Scalar(0, 255, 0), 3);
-                Imgproc.line(mainMat, rectMatOfPoint.toList()[2], rectMatOfPoint.toList()[3], new Scalar(0, 255, 0), 3);
-                Imgproc.line(mainMat, rectMatOfPoint.toList()[1], rectMatOfPoint.toList()[2], new Scalar(0, 255, 0), 3);
+                Imgproc.line(mainMat, paperCornerMatOfPoint.toList()[0], paperCornerMatOfPoint.toList()[1], new Scalar(0, 255, 0), 3);
+                Imgproc.line(mainMat, paperCornerMatOfPoint.toList()[0], paperCornerMatOfPoint.toList()[3], new Scalar(0, 255, 0), 3);
+                Imgproc.line(mainMat, paperCornerMatOfPoint.toList()[2], paperCornerMatOfPoint.toList()[3], new Scalar(0, 255, 0), 3);
+                Imgproc.line(mainMat, paperCornerMatOfPoint.toList()[1], paperCornerMatOfPoint.toList()[2], new Scalar(0, 255, 0), 3);
 
                 // extract target from the frame and adjust some angle....
-                Mat srcPointsMat = Converters.vector_Point_to_Mat(rectMatOfPoint.toList(), CvType.CV_32F);
+                Mat srcPointsMat = Converters.vector_Point_to_Mat(paperCornerMatOfPoint.toList(), CvType.CV_32F);
 
                 List<Point> dstPoints = new List<Point>();
                 dstPoints.Add(new Point(0, 0));
@@ -762,66 +755,12 @@ namespace OpenCVForUnityExample
                 Utils.matToTexture2D(warpedMat, finalTargetTextue);
 
                 targetRawImage.texture = finalTargetTextue;
-                Debug.Log(rectMatOfPoint.toList()[0].ToString() + " " + rectMatOfPoint.toList()[1].ToString()+ " " + rectMatOfPoint.toList()[2].ToString()+ " " + rectMatOfPoint.toList()[3].ToString());
+                //Debug.Log(paperCornerMatOfPoint.toList()[0].ToString() + " " + paperCornerMatOfPoint.toList()[1].ToString()+ " " + paperCornerMatOfPoint.toList()[2].ToString()+ " " + paperCornerMatOfPoint.toList()[3].ToString());
             }
             //--------------------------------------------------------
 
 
             return mainMat;
-        }
-
-
-        public static Mat overlayImage(Mat background, Mat foreground, Point location)
-        {
-            Mat output = new Mat();
-
-            background.copyTo(output);
-
-            for (int y = (int)Mathf.Max((float)location.y, 0); y < foreground.rows(); ++y)
-            {
-
-                int fY = (int)(y - location.y);
-
-                if (y >= background.rows())
-                    break;
-
-                for (int x = (int)Mathf.Max((float)location.x, 0); x < foreground.cols(); ++x)
-                {
-                    int fX = (int)(x - location.x);
-                    if (x >= background.cols())
-                    {
-                        break;
-                    }
-
-                    double opacity;
-                    double[] finalPixelValue = new double[4];
-
-                    opacity = foreground.get(fY, fX)[3];
-
-                    finalPixelValue[0] = background.get(y, x)[0];
-                    finalPixelValue[1] = background.get(y, x)[1];
-                    finalPixelValue[2] = background.get(y, x)[2];
-                    finalPixelValue[3] = background.get(y, x)[3];
-
-                    for (int c = 0; c < output.channels(); ++c)
-                    {
-                        if (opacity > 0)
-                        {
-                            double foregroundPx = foreground.get(fY, fX)[c];
-                            double backgroundPx = background.get(y, x)[c];
-
-                            float fOpacity = (float)(opacity / 255);
-                            finalPixelValue[c] = ((backgroundPx * (1.0 - fOpacity)) + (foregroundPx * fOpacity));
-                            if (c == 3)
-                            {
-                                finalPixelValue[c] = foreground.get(fY, fX)[3];
-                            }
-                        }
-                    }
-                    output.put(y, x, finalPixelValue);
-                }
-            }
-            return output;
         }
     }
 }
