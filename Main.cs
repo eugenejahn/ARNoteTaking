@@ -87,27 +87,25 @@ namespace OpenCVForUnityExample
 
 
 
-        private static int findLargestSquare(List<MatOfPoint> squares)
+        private static int findLargestContour(List<MatOfPoint> squares)
         {
             if (squares.Count == 0)
                 return -1;
-            int max_width = 0;
-            int max_height = 0;
             int max_square_idx = 0;
             int currentIndex = 0;
+            double max_area = 0;
 
             foreach (MatOfPoint square in squares)
-            {
-                OpenCVForUnity.Rect rect = new OpenCVForUnity.Rect();
-                rect = Imgproc.boundingRect(square);
-                if (rect.width * rect.height >= max_height * max_width)
+            {   
+                double area = Imgproc.contourArea(square);
+                //OpenCVForUnity.Rect rect = new OpenCVForUnity.Rect();
+                //rect = Imgproc.boundingRect(square);
+                if (area > max_area)
                 {
-                    max_width = rect.width;
-                    max_height = rect.height;
+                    max_area = area;
                     max_square_idx = currentIndex;
                 }
                 currentIndex++;
-
             }
 
             return max_square_idx;
@@ -258,7 +256,7 @@ namespace OpenCVForUnityExample
         Scalar zeroEle = new Scalar(0, 0, 0, 255);
 
         MatOfPoint2f p1 = new MatOfPoint2f();
-        MatOfByte st = new MatOfByte();
+        MatOfByte mMOBStatus = new MatOfByte();
         MatOfFloat err = new MatOfFloat();
 
 
@@ -321,7 +319,8 @@ namespace OpenCVForUnityExample
                         }
 
                         // make the points closer to the corners (Harris Corner Detection )
-                        Imgproc.goodFeaturesToTrack(currentGrayMat, corners, 40, qualityLevel, minDistance, none, blockSize, false, 0.04);
+                        //Imgproc.goodFeaturesToTrack(currentGrayMat, corners, 40, qualityLevel, minDistance, none, blockSize, false, 0.04);
+                        //Imgproc.goodFeaturesToTrack(currentGrayMat, corners, 40,0.05,20);
 
                         corners.fromArray(points);
 
@@ -356,22 +355,39 @@ namespace OpenCVForUnityExample
                         prevFeatures.fromArray(currentFeatures.toArray());
 
                         // optical flow it will changes the valu of currentFeatures
-                        Video.calcOpticalFlowPyrLK(prevGrayMat, currentGrayMat, prevFeatures, currentFeatures, st, err);
+                        Video.calcOpticalFlowPyrLK(prevGrayMat, currentGrayMat, prevFeatures, currentFeatures, mMOBStatus, err);
                         //Debug.Log(st.rows());
 
                         // change to points list 
                         List<Point> prevList = prevFeatures.toList(),
                                     nextList = currentFeatures.toList();
+                        List<byte> byteStatus = mMOBStatus.toList();
 
+
+                        int x = 0;
+                        int y = byteStatus.Count - 1;
+
+                        for (x = 0; x < y; x++)
+                        {
+                            if (byteStatus[x] == 1)
+                            {
+                                Point pt = nextList[x];
+                                Point pt2 = prevList[x];
+
+                                Imgproc.circle(mainMat, pt, 10, new Scalar(0, 0, 255),  - 1);
+
+                                Imgproc.line(mainMat, pt, pt2, new Scalar(0, 0, 255));
+                            }
+                        }
 
                         // draw the data 
-                        for (int i = 0; i < prevList.Count; i++)
-                        {
-                            //Imgproc.circle(frame, prevList[i], 5, color[10]);
-                            Imgproc.circle(mainMat, nextList[i], 10, new Scalar(0, 0, 255), -1);
+                        //for (int i = 0; i < prevList.Count; i++)
+                        //{
+                        //    //Imgproc.circle(frame, prevList[i], 5, color[10]);
+                        //    Imgproc.circle(mainMat, nextList[i], 10, new Scalar(0, 0, 255), -1);
 
-                            Imgproc.line(mainMat, prevList[i], nextList[i], color[20]);
-                        }
+                        //    Imgproc.line(mainMat, prevList[i], nextList[i], color[20]);
+                        //}
 
 
                         List<List<Point>> cornersFeatures = new List<List<Point>>(40);
@@ -381,7 +397,7 @@ namespace OpenCVForUnityExample
                         int tmp = 0;
                         bool last = true;
                         for (int i = 0; i < nextList.Count - 1; i++)
-                        {
+                        {   
                             if (Mathf.Abs((float)(nextList[i].x - nextList[i + 1].x)) < 10 && Mathf.Abs((float)(nextList[i].y - nextList[i + 1].y)) < 10)
                             {
                                 if (last == true)
@@ -679,7 +695,7 @@ namespace OpenCVForUnityExample
                     }
 
 
-                    if (min_length > 100)//  && rate >= 0.6  maxCosine < 135f &&
+                    if (min_length > 100 && maxCosine < 135f)//  && rate >= 0.6  maxCosine < 135f &&
                     {
                         tmpTargets.Add(approxPt);
                         //Debug.Log("Length -----------" + min_length);
@@ -722,7 +738,7 @@ namespace OpenCVForUnityExample
 
                 // get the first contours
 
-                int largestPaper = findLargestSquare(tmpTargets);
+                int largestPaper = findLargestContour(tmpTargets);
                 //Debug.Log(largestPaper);
                 // using the largest one 
                 paperCornerMatOfPoint = tmpTargets[largestPaper];
